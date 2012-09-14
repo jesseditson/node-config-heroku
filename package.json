@@ -1,0 +1,25 @@
+{
+  "name": "node-config-heroku",
+  "version": "0.0.1",
+  "description": "An adapter for using node-config (https://github.com/lorenwest/node-config) on heroku",
+  "main": "config-heroku.js",
+  "scripts": {},
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/jesseditson/node-config-heroku.git"
+  },
+  "keywords": [
+    "node-config",
+    "heroku"
+  ],
+  "author": "Jesse Ditson <jesse.ditson@gmail.com>",
+  "license": "BSD",
+  "dependencies": {
+    "config": "~0.4.16",
+    "commander": "~1.0.4",
+    "execSync": "0.0.1"
+  },
+  "bin": {
+    "config-heroku": "./lib/cli"
+  }
+}

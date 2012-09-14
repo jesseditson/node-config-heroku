@@ -1,0 +1,150 @@
+#!/usr/bin/env node
+// **Config, as called from the command line**
+// saves config files to heroku config vars
+var program = require('commander'),
+    fs = require('fs'),
+    execSync = require('execSync'),
+    path = require('path')
+
+// **Helpers**
+
+// find the closest dir containing a file or folder, locate ourselves there
+var findFile = function(search,type,path){
+  var thisdir = path || process.cwd()
+  var searchdir = thisdir + '/' + search
+  try {
+      stats = fs.lstatSync(searchdir)
+      if (type == "dir" && stats.isDirectory()) {
+        return thisdir
+      } else if(type == "file" && stats.isFile()) {
+        return thisdir
+      }
+  } catch (e) {
+    var parts = thisdir.split('/')
+    parts.pop()
+    if(parts.length > 1){
+      return findFile(search,type,parts.join('/'))
+    } else {
+      return false
+    }
+  }
+}
+
+// **Main script**
+var run = function(packageFile){
+  // **Commands**
+  
+  // save command
+  program
+    .command('save [configname] [varname] [yes]')
+    .description('save closest found production config to heroku env. Var name defaults to "[configname]_CONFIG", configname defaults to "heroku", yes will always save.')
+    .action(function(configname,varname,yes){
+      configname = configname || "heroku"
+      varname = varname || configname.toUpperCase() + "_CONFIG"
+      // go into produciton mode
+      process.env.NODE_ENV='production'
+      if(!(fs.existsSync || path.existsSync)(configDir + '/config/' +configname+ '.json')) return console.error("Config file '"+configname+".json' not found.")
+      /*if((fs.existsSync || path.existsSync)(configDir + '/config/runtime.json')){
+        fs.renameSync(configDir + '/config/runtime.json',configDir + '/__runtime.json')
+      }*/
+      var config
+      try {
+        config = JSON.parse(fs.readFileSync(configDir + '/config/'+configname+'.json'))
+      } catch(e){
+        return console.error("Failed parsing config file: "+e)
+      }
+      var save = function(){
+        console.log("Looks good! Saving to config...")
+        var saved = execSync.stdout('heroku config:add '+varname+"='"+JSON.stringify(config)+"'")
+        console.log("Done saving. Response:\n"+saved)
+        var currentlyUsing = execSync.stdout('heroku config:get CONFIG_VAR').replace(/^[\n\s]*(.*)[\n\s]*$/,'$1')
+        if(!currentlyUsing){
+          setConfig(varname)
+          currentlyUsing = varname
+        }
+        console.log("Heroku is currently using the "+currentlyUsing+" config. Use 'config-heroku use <var>' to change.")
+      }
+      if(yes) return save()
+      program.confirm('Saving config: \n' + JSON.stringify(config,null,4) + '\nIs this ok? (y/n)', function(ok){
+        if(ok){
+          save()
+        }
+        // restore runtime
+        /*if((fs.existsSync || path.existsSync)(configDir + '/__runtime.json')){
+          fs.unlinkSync(configDir + '/runtime.json');
+          fs.renameSync(configDir + '/__runtime.json',configDir + '/config/runtime.json')
+        }*/
+        process.exit(0)
+      })
+    })
+  // add git hook
+  program
+    .command('hook [add] [configname] [varname]')
+    .description('adds or removes git hook to re-save configs with specified arguments to the nearest .git directory. Use "hook add or hook remove"')
+    .action(function(add,configname,varname){
+      add = add || "add"
+      configname = configname || ""
+      varname = varname || ""
+      var gitDir = findFile('.git/hooks','dir'),
+          existingPreCommit = '',
+          preCommitCommand = 'config-heroku save '+configname+" "+varname
+      if(!gitDir) return console.error("Could not find git hooks directory.")
+      gitDir += "/.git/hooks"
+      console.log("looking up hooks in "+gitDir)
+      try {
+        existingPreCommit = fs.readFileSync(gitDir + '/pre-commit','utf8')
+        if(existingPreCommit.match(preCommitCommand) && add != "remove"){
+          return console.error("pre-commit hooks already installed.")
+        } else {
+          console.log("modifying existing pre-commit hook")
+        }
+      } catch(e){ console.log("existing pre-commit hook not found.") }
+      var writeString = existingPreCommit + "\n" + preCommitCommand
+      if(add == "remove"){
+        writeString = existingPreCommit.replace("\n"+preCommitCommand,'')
+      }
+      program.confirm("Updating pre-commit hook to:\n"+writeString+"\nIs this ok? (y/n)",function(ok){
+        fs.writeFileSync(gitDir+'/pre-commit',writeString,'utf8')
+        execSync.stdout("chmod 755 "+gitDir+"/pre-commit")
+        console.log("updated permissions")
+        console.log('done.')
+        process.exit(0)
+      })
+    })
+  // tell heroku which config to use
+  var setConfig = function(varname){
+    var saved = execSync.stdout('heroku config:add CONFIG_VAR='+varname+"")
+    console.log('updated CONFIG_VAR.')
+  }
+  program
+    .command('use [varname]')
+    .description('tell heroku which config variable to use.')
+    .action(function(varname){
+      setConfig(varname)
+      process.exit(0)
+    })
+  if(process.argv.length < 3){
+    // show the help
+    process.argv.push('--help')
+    return program.parse(process.argv)
+  }
+  // local variables
+  var configDir = findFile('config','dir'),
+      packageInfo = JSON.parse(fs.readFileSync(packageFile,'utf8'))
+  
+  console.log("config-heroku v"+packageInfo.version)
+  console.log("looking up heroku app...")
+  // verify setup
+  if(!configDir) return console.error("Could not find a config directory. Please create one!")
+  if(!execSync.stdout('heroku config')) return console.error("You don't seem to be in a heroku app. Please set up heroku first.")
+
+  program.version(packageInfo.version)
+  // go
+  program.parse(process.argv);
+}
+
+if(require.main === module){
+  run(__dirname + '/../package.json')
+} else {
+  module.exports = run
+}
