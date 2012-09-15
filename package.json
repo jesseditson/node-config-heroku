@@ -1,5 +1,5 @@
 {
-  "name": "node-config-heroku",
+  "name": "config-heroku",
   "version": "0.0.1",
   "description": "An adapter for using node-config (https://github.com/lorenwest/node-config) on heroku",
   "main": "config-heroku.js",

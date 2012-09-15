@@ -87,7 +87,7 @@ var run = function(packageFile){
       varname = varname || ""
       var gitDir = findFile('.git/hooks','dir'),
           existingPreCommit = '',
-          preCommitCommand = 'config-heroku save '+configname+" "+varname
+          preCommitCommand = 'config-heroku save '+configname+" "+varname+" yes"
       if(!gitDir) return console.error("Could not find git hooks directory.")
       gitDir += "/.git/hooks"
       console.log("looking up hooks in "+gitDir)
