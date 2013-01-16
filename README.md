@@ -14,7 +14,7 @@ add it to your `package.json`, and use it exactly like [node-config](https://git
 
 As config-heroku is api compatible with config, you can just globally find & replace `require('config')` with `require('config-heroku')` to achieve heroku compatibility.
 
-As you'll want a heroku specific config, add a `heroku.json` file to your `config` folder. It'll act like a `production.json`, just only when it's up on heroku. You can add different ones if you want staging/prod setup (see [Black Belt Usage](#Black-Belt-Usage) below).
+As you'll want a heroku specific config, add a `heroku.json` file to your `config` folder. It'll act like a `production.json`, just only when it's up on heroku. You can add different ones if you want staging/prod setup (see [Black Belt Usage](#black-belt-usage) below).
 
 You'll need to set up the command line tool to package up your config - you can install it everywhere using:
 
