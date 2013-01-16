@@ -14,7 +14,7 @@ add it to your `package.json`, and use it exactly like [node-config](https://git
 
 As config-heroku is api compatible with config, you can just globally find & replace `require('config')` with `require('config-heroku')` to achieve heroku compatibility.
 
-As you'll want a heroku specific config, add a `heroku.json` file to your `config` folder. It'll act like a `production.json`, just only when it's up on heroku. You can add different ones if you want staging/prod setup (see [Black Belt Usage]("#Black-Belt-Usage") below).
+As you'll want a heroku specific config, add a `heroku.json` file to your `config` folder. It'll act like a `production.json`, just only when it's up on heroku. You can add different ones if you want staging/prod setup (see [Black Belt Usage](#Black-Belt-Usage) below).
 
 You'll need to set up the command line tool to package up your config - you can install it everywhere using:
 
@@ -47,11 +47,17 @@ You're not convinced. What is the variable called? How does this work?
 Don't worry, young grasshoper, here are answers:
 
 - By default, config-heroku will save it's info as JSON in a variable called "HEROKU_CONFIG".
+
 - When saving, config-heroku will read from `config/heroku.json` (after inheriting default.json like node-config does) unless specified.
+
 - You can save and specify which config you'd like to save, using `config-heroku save somename`. This will now save using the `config/somename.json` file instead.
+
 - If you don't like the name `HEROKU_CONFIG`, you can change that too. Just use `config-heroku save somename MY_VARNAME`. Now you'll have a shiny new environment variable with your special config in it called `MY_VARNAME`.
+
 - Config always defaults to looking for the `HEROKU_CONFIG` variable. If you want to switch the current app to use something else, you can switch it using `config-heroku use MY_VARNAME`. Now your app will use the `MY_VARNAME` config instead of the `HEROKU_CONFIG` one.
+
 - Now you've got a bunch of names to remember and your hook is broken. Don't worry, the `hook` command accepts the same arguments as `save` - you can simply `config-heroku hook add somename MY_VARNAME`. Now when you commit, the `MY_VARNAME` config is updated to the info in `config/somename.json`.
+
 
 I work for devops and prefer non-markdown formatted documentation
 =================================================================
@@ -81,5 +87,7 @@ That's all.
 Github issues is a fine place to put bugs for this project if you find them.
 
 Jesse Ditson
+
 jesse.ditson@gmail.com
-@jesseditson
+
+[@jesseditson](http://twitter.com/jesseditson)
