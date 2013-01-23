@@ -3,7 +3,6 @@
 // saves config files to heroku config vars
 var program = require('commander'),
     fs = require('fs'),
-    execSync = require('execSync'),
     path = require('path')
 
 // **Helpers**
@@ -53,16 +52,25 @@ var run = function(packageFile){
       } catch(e){
         return console.error("Failed parsing config file: "+e)
       }
-      var save = function(){
+      var save = function(complete){
         console.log("Looks good! Saving to config...")
-        var saved = execSync.stdout('heroku config:add '+varname+"='"+JSON.stringify(config)+"'")
-        console.log("Done saving. Response:\n"+saved)
-        var currentlyUsing = execSync.stdout('heroku config:get CONFIG_VAR').replace(/^[\n\s]*(.*)[\n\s]*$/,'$1')
-        if(!currentlyUsing){
-          setConfig(varname)
-          currentlyUsing = varname
-        }
-        console.log("Heroku is currently using the "+currentlyUsing+" config. Use 'config-heroku use <var>' to change.")
+        exec('heroku config:add '+varname+"='"+JSON.stringify(config)+"'",function(err,stdout,stderr){
+          if(err) throw err
+          console.log("Done saving. Response:\n"+(stdout || stderr))
+          exec('heroku config:get CONFIG_VAR',function(err,stdout,stderr){
+            var currentlyUsing = stdout.replace(/^[\n\s]*(.*)[\n\s]*$/,'$1')
+            if(!currentlyUsing){
+              setConfig(varname,function(){
+                console.log("Heroku is currently using the "+currentlyUsing+" config. Use 'config-heroku use <var>' to change.")
+                currentlyUsing = varname
+                process.exit(0)
+              })
+            } else {
+              console.log("Heroku is currently using the "+currentlyUsing+" config. Use 'config-heroku use <var>' to change.")
+              process.exit(0)
+            }
+          })
+        })
       }
       if(yes) return save()
       program.confirm('Saving config: \n' + JSON.stringify(config,null,4) + '\nIs this ok? (y/n)', function(ok){
@@ -105,23 +113,27 @@ var run = function(packageFile){
       }
       program.confirm("Updating pre-commit hook to:\n"+writeString+"\nIs this ok? (y/n)",function(ok){
         fs.writeFileSync(gitDir+'/pre-commit',writeString,'utf8')
-        execSync.stdout("chmod 755 "+gitDir+"/pre-commit")
-        console.log("updated permissions")
-        console.log('done.')
-        process.exit(0)
+        exec("chmod 755 "+gitDir+"/pre-commit",function(err,stdout,stderr){
+          console.log("updated permissions")
+          console.log('done.')
+          process.exit(0)
+        })
       })
     })
   // tell heroku which config to use
-  var setConfig = function(varname){
-    var saved = execSync.stdout('heroku config:add CONFIG_VAR='+varname+"")
-    console.log('updated CONFIG_VAR.')
+  var setConfig = function(varname,done){
+    exec('heroku config:add CONFIG_VAR='+varname+'',function(err,saved,stderr){
+      console.log('updated CONFIG_VAR.')
+      done()
+    })
   }
   program
     .command('use [varname]')
     .description('tell heroku which config variable to use.')
     .action(function(varname){
-      setConfig(varname)
-      process.exit(0)
+      setConfig(varname,function(){
+        process.exit(0)
+      })
     })
   if(process.argv.length < 3){
     // show the help
@@ -136,11 +148,12 @@ var run = function(packageFile){
   console.log("looking up heroku app...")
   // verify setup
   if(!configDir) return console.error("Could not find a config directory. Please create one!")
-  if(!execSync.stdout('heroku config')) return console.error("You don't seem to be in a heroku app. Please set up heroku first.")
-
-  program.version(packageInfo.version)
-  // go
-  program.parse(process.argv);
+  exec('heroku config',function(err,stdout,stderr){
+    if(!stdout) return console.error("You don't seem to be in a heroku app. Please set up heroku first.")
+    program.version(packageInfo.version)
+    // go
+    program.parse(process.argv);
+  })
 }
 
 if(require.main === module){
