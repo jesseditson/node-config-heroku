@@ -3,34 +3,28 @@
 // saves config files to heroku config vars
 var program = require('commander'),
     fs = require('fs'),
-    path = require('path')
+    path = require('path'),
+    exec = require('child_process').exec,
+    helpers = require('helpers')
 
-// **Helpers**
-
-// find the closest dir containing a file or folder, locate ourselves there
-var findFile = function(search,type,path){
-  var thisdir = path || process.cwd()
-  var searchdir = thisdir + '/' + search
-  try {
-      stats = fs.lstatSync(searchdir)
-      if (type == "dir" && stats.isDirectory()) {
-        return thisdir
-      } else if(type == "file" && stats.isFile()) {
-        return thisdir
-      }
-  } catch (e) {
-    var parts = thisdir.split('/')
-    parts.pop()
-    if(parts.length > 1){
-      return findFile(search,type,parts.join('/'))
-    } else {
-      return false
-    }
-  }
-}
+// commands
+var save = require('./commands/save')
 
 // **Main script**
 var run = function(packageFile){
+  // local variables
+  var configDir = helpers.findFile('config','dir'),
+      packageInfo = JSON.parse(fs.readFileSync(packageFile,'utf8'))
+  
+  console.log("config-heroku v"+packageInfo.version)
+  // verify setup
+  if(!configDir) return console.error("Could not find a config directory. Please create one!")
+  helpers.verifyHerokuApp(function(ok){
+    if(!ok) return console.error("You don't seem to be in a heroku app. Please set up heroku first.")
+    program.version(packageInfo.version)
+    // go
+    program.parse(process.argv);
+  })
   // **Commands**
   
   // save command
@@ -38,50 +32,14 @@ var run = function(packageFile){
     .command('save [configname] [varname] [yes]')
     .description('save closest found production config to heroku env. Var name defaults to "[configname]_CONFIG", configname defaults to "heroku", yes will always save.')
     .action(function(configname,varname,yes){
-      configname = configname || "heroku"
-      varname = varname || configname.toUpperCase() + "_CONFIG"
-      // go into produciton mode
-      process.env.NODE_ENV='production'
-      if(!(fs.existsSync || path.existsSync)(configDir + '/config/' +configname+ '.json')) return console.error("Config file '"+configname+".json' not found.")
-      /*if((fs.existsSync || path.existsSync)(configDir + '/config/runtime.json')){
-        fs.renameSync(configDir + '/config/runtime.json',configDir + '/__runtime.json')
-      }*/
-      var config
-      try {
-        config = JSON.parse(fs.readFileSync(configDir + '/config/'+configname+'.json'))
-      } catch(e){
-        return console.error("Failed parsing config file: "+e)
-      }
-      var save = function(complete){
-        console.log("Looks good! Saving to config...")
-        exec('heroku config:add '+varname+"='"+JSON.stringify(config)+"'",function(err,stdout,stderr){
-          if(err) throw err
-          console.log("Done saving. Response:\n"+(stdout || stderr))
-          exec('heroku config:get CONFIG_VAR',function(err,stdout,stderr){
-            var currentlyUsing = stdout.replace(/^[\n\s]*(.*)[\n\s]*$/,'$1')
-            if(!currentlyUsing){
-              setConfig(varname,function(){
-                console.log("Heroku is currently using the "+currentlyUsing+" config. Use 'config-heroku use <var>' to change.")
-                currentlyUsing = varname
-                process.exit(0)
-              })
-            } else {
-              console.log("Heroku is currently using the "+currentlyUsing+" config. Use 'config-heroku use <var>' to change.")
-              process.exit(0)
-            }
-          })
-        })
-      }
-      if(yes) return save()
-      program.confirm('Saving config: \n' + JSON.stringify(config,null,4) + '\nIs this ok? (y/n)', function(ok){
-        if(ok){
-          save()
-        }
-        // restore runtime
-        /*if((fs.existsSync || path.existsSync)(configDir + '/__runtime.json')){
-          fs.unlinkSync(configDir + '/runtime.json');
-          fs.renameSync(configDir + '/__runtime.json',configDir + '/config/runtime.json')
-        }*/
+      save({
+        configname : configname,
+        varname : varname,
+        configDir : configDir
+      },function(config,cb){
+        if(yes) return cb(true)
+        program.confirm('Saving config: \n' + JSON.stringify(config,null,4) + '\nIs this ok? (y/n)', cb)
+      },function(){
         process.exit(0)
       })
     })
@@ -93,7 +51,7 @@ var run = function(packageFile){
       add = add || "add"
       configname = configname || ""
       varname = varname || ""
-      var gitDir = findFile('.git/hooks','dir'),
+      var gitDir = helpers.findFile('.git/hooks','dir'),
           existingPreCommit = '',
           preCommitCommand = 'config-heroku save '+configname+" "+varname+" yes"
       if(!gitDir) return console.error("Could not find git hooks directory.")
@@ -120,13 +78,6 @@ var run = function(packageFile){
         })
       })
     })
-  // tell heroku which config to use
-  var setConfig = function(varname,done){
-    exec('heroku config:add CONFIG_VAR='+varname+'',function(err,saved,stderr){
-      console.log('updated CONFIG_VAR.')
-      done()
-    })
-  }
   program
     .command('use [varname]')
     .description('tell heroku which config variable to use.')
@@ -140,20 +91,6 @@ var run = function(packageFile){
     process.argv.push('--help')
     return program.parse(process.argv)
   }
-  // local variables
-  var configDir = findFile('config','dir'),
-      packageInfo = JSON.parse(fs.readFileSync(packageFile,'utf8'))
-  
-  console.log("config-heroku v"+packageInfo.version)
-  console.log("looking up heroku app...")
-  // verify setup
-  if(!configDir) return console.error("Could not find a config directory. Please create one!")
-  exec('heroku config',function(err,stdout,stderr){
-    if(!stdout) return console.error("You don't seem to be in a heroku app. Please set up heroku first.")
-    program.version(packageInfo.version)
-    // go
-    program.parse(process.argv);
-  })
 }
 
 if(require.main === module){
