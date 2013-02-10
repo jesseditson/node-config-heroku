@@ -10,7 +10,9 @@
   },
   "keywords": [
     "node-config",
-    "heroku"
+    "heroku",
+    "config",
+    "gruntplugin"
   ],
   "author": "Jesse Ditson <jesse.ditson@gmail.com>",
   "license": "BSD",

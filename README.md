@@ -39,6 +39,25 @@ Oops, you changed your mind? It's ok, config-heroku can clean up after itself:
 
 No more hook!
 
+Grunt
+=====
+
+This config-heroku also has a grunt task - you can use it like so:
+
+
+    grunt.loadNpmTasks('config-heroku')
+
+then later in your config:
+
+    grunt.initConfig({
+      'config-heroku' : {
+        configname : 'heroku',
+        varname : '<%= grunt.config("config-heroku").configname.toUpperCase() %>_CONFIG'
+      }
+    })
+
+Now you can automatically update the heroku config vars when building.
+
 Black-Belt Usage
 ================
 
