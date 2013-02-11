@@ -23,9 +23,9 @@ module.exports = function(grunt){
     var done = this.async()
     var config = getConfig()
     grunt.log.writeln('Saving local config to Heroku...'.blue)
-    save.call(grunt,config, function(conf,cb){ return cb(true) }, function(){
+    save.call(grunt,config, function(conf,cb){ return cb(true) }, function(success){
       grunt.log.writeln("Completed saving config.".blue)
-      done()
+      done(success)
     })
   });
 }
