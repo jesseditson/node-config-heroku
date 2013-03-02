@@ -1,6 +1,6 @@
 {
   "name": "config-heroku",
-  "version": "0.0.5",
+  "version": "0.1.0a",
   "description": "An adapter for using node-config (https://github.com/lorenwest/node-config) on heroku",
   "main": "config-heroku.js",
   "scripts": {},
@@ -17,7 +17,6 @@
   "author": "Jesse Ditson <jesse.ditson@gmail.com>",
   "license": "BSD",
   "dependencies": {
-    "config": "~0.4.16",
     "commander": ">=1.0.1- <1.1.0-"
   },
   "bin": {
