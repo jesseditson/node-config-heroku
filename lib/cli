@@ -5,7 +5,7 @@ var program = require('commander'),
     fs = require('fs'),
     path = require('path'),
     exec = require('child_process').exec,
-    helpers = require('helpers')
+    helpers = require('./helpers')
 
 // commands
 var save = require('./commands/save')
@@ -19,8 +19,7 @@ var run = function(packageFile){
   console.log("config-heroku v"+packageInfo.version)
   // verify setup
   if(!configDir) return console.error("Could not find a config directory. Please create one!")
-  helpers.verifyHerokuApp(function(ok){
-    if(!ok) return console.error("You don't seem to be in a heroku app. Please set up heroku first.")
+  process.nextTick(function(){
     program.version(packageInfo.version)
     // go
     program.parse(process.argv);
@@ -29,13 +28,18 @@ var run = function(packageFile){
   
   // save command
   program
-    .command('save [configname] [varname] [yes]')
+    .command('save [configname] [varname] [app] [yes]')
     .description('save closest found production config to heroku env. Var name defaults to "[configname]_CONFIG", configname defaults to "heroku", yes will always save.')
-    .action(function(configname,varname,yes){
+    .action(function(configname,varname,app,yes){
+      if(!yes && (app == 'yes' || app == 'true' || app == 'false')){
+        yes = app
+        app = false
+      }
       save({
         configname : configname,
         varname : varname,
-        configDir : configDir
+        configDir : configDir,
+        app : app || false
       },function(config,cb){
         if(yes) return cb(true)
         program.confirm('Saving config: \n' + JSON.stringify(config,null,4) + '\nIs this ok? (y/n)', cb)
@@ -45,15 +49,15 @@ var run = function(packageFile){
     })
   // add git hook
   program
-    .command('hook [add] [configname] [varname]')
+    .command('hook [add] [configname] [varname] [app]')
     .description('adds or removes git hook to re-save configs with specified arguments to the nearest .git directory. Use "hook add or hook remove"')
-    .action(function(add,configname,varname){
+    .action(function(add,configname,varname,app){
       add = add || "add"
       configname = configname || ""
       varname = varname || ""
       var gitDir = helpers.findFile('.git/hooks','dir'),
           existingPreCommit = '',
-          preCommitCommand = 'config-heroku save '+configname+" "+varname+" yes"
+          preCommitCommand = 'config-heroku save '+configname+" "+varname+" "+app+" yes"
       if(!gitDir) return console.error("Could not find git hooks directory.")
       gitDir += "/.git/hooks"
       console.log("looking up hooks in "+gitDir)
