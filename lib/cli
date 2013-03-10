@@ -79,10 +79,10 @@ var run = function(packageFile){
       })
     })
   program
-    .command('use [varname]')
+    .command('use [varname] [app]')
     .description('tell heroku which config variable to use.')
-    .action(function(varname){
-      setConfig(varname,function(){
+    .action(function(varname,app){
+      setConfig(varname,app || false,function(){
         process.exit(0)
       })
     })
